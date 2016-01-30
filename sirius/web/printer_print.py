@@ -5,6 +5,7 @@ from flask.ext import login
 import flask_wtf
 import wtforms
 import base64
+import logging
 
 from sirius.models.db import db
 from sirius.models import hardware
@@ -15,6 +16,7 @@ from sirius.coding import image_encoding
 from sirius.coding import templating
 from sirius import stats
 
+logger = logging.getLogger(__name__)
 
 blueprint = flask.Blueprint('printer_print', __name__)
 
@@ -25,9 +27,12 @@ class PrintForm(flask_wtf.Form):
         coerce=int,
         validators=[wtforms.validators.DataRequired()],
     )
+    # message = wtforms.TextAreaField(
+    #     'Message',
+    #     validators=[wtforms.validators.DataRequired()],
+    # )
     message = wtforms.TextAreaField(
         'Message',
-        validators=[wtforms.validators.DataRequired()],
     )
 
 
@@ -70,7 +75,7 @@ def printer_print(printer_id):
         # TODO: use templating to avoid injection attacks
         pixels = image_encoding.default_pipeline(
             templating.default_template(form.message.data))
-        hardware_message = messages.SetDeliveryAndPrint(
+        hardware_message = messages.SetDeliveryAndPrintNoFace(
             device_address=printer.device_address,
             pixels=pixels,
         )

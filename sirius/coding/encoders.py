@@ -3,10 +3,13 @@ dictionaries that can be encoded directly as json.
 """
 import struct
 import base64
+import logging
 
 from sirius.coding import image_encoding
 from sirius.coding import claiming
 from sirius.protocol import messages
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     'encode_bridge_command',
@@ -14,6 +17,8 @@ __all__ = [
 
 
 def _encode_pixels(pixel_count, rle_image):
+    logger.debug("PIXEL COUNT: %s", pixel_count)
+
     """
     :param pixel_count: total number of pixels
     :param rle_image: Run-length encoded black and white image.
@@ -30,11 +35,20 @@ def _encode_pixels(pixel_count, rle_image):
     n2, n1 = divmod(n3_remainder, 256)
     printer_data = struct.pack("<8B", 0x1b, 0x2a, n1, n2, n3, 0, 0, 48)
     header_region = struct.pack("<BI", 0, len(printer_control) + len(printer_data))
+    logger.debug("HEADER REGION: %s", header_region.encode('hex'))
+    logger.debug("PRINTER CONTROL: %s", printer_control.encode('hex'))
+    logger.debug("PRINTER DATA: %s", printer_data.encode('hex'))
     header_region += printer_control + printer_data
 
     # payload including the header
     payload = struct.pack("<IB", len(header_region) + len(rle_image) + 1, 0)
+    logger.debug("PAYLOAD BASE: %s", payload.encode('hex'))
+    logger.debug("IMAGE: %s", rle_image.encode('hex'))
+
     payload += header_region + rle_image
+
+    logger.debug("FULL PAYLOAD: %s", payload.encode('hex'))
+
 
     return payload
 
@@ -59,6 +73,8 @@ def _encode_printer_message(command, payload, print_id):
         print_id, 0,
     )
     entire_payload = command_header + struct.pack("<I", len(payload)) + payload
+
+    logger.debug("ENTIRE PAYLOAD: %s", entire_payload.encode('hex'))
 
     return entire_payload
 
@@ -102,6 +118,9 @@ def encode_bridge_command(bridge_address, command, command_id, timestamp):
         })
 
     elif type(command) == messages.SetDeliveryAndPrint:
+        # bin_payload = base64.b64encode(_encode_printer_message(0x1, _payload_from_pixels(command.pixels), command_id))
+        # logger.debug("payload base64: %s", bin_payload)
+
         return make({
             'binary_payload': base64.b64encode(_encode_printer_message(
                 0x1, _payload_from_pixels(command.pixels), command_id)),

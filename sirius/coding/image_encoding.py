@@ -3,6 +3,9 @@ from itertools import groupby
 import struct
 import io
 import tempfile
+import logging
+
+logger = logging.getLogger(__name__)
 
 WHITE = '\xff'
 BLACK = '\x00'
@@ -74,6 +77,8 @@ def rle_from_bw(bw_image):
     bw_image = bw_image.transpose(Image.ROTATE_180)
     pixels = list(bw_image.getdata())
 
+    logger.debug("pixeldata: %s", pixels)
+
     # Group each run length into lists each list is (result of
     # identity function, [actual pixels])
     grouped = groupby(pixels)
@@ -83,6 +88,7 @@ def rle_from_bw(bw_image):
     for k, g in grouped:
         groups.append((k, ilen(g)))
 
+    logger.debug("RLE list: %s", groups)
     # the decoder assumes that the first run is white, so if the
     # first pixel is black, add a zero run of white
     if groups[0][0] == BLACK:
@@ -93,9 +99,13 @@ def rle_from_bw(bw_image):
     x = bytearray(rle(lengths))
     compressed_data = struct.pack("<%dB" % len(x), *x)
 
+    logger.debug("RLE compressed data: %s", compressed_data.encode('hex'))
+
     # package up with length as header
     # first byte is compressed type, always 1
     output = struct.pack("<BL", 0x01, len(compressed_data)) + compressed_data
+
+    logger.debug("RLE final output: %s", compressed_data.encode('hex'))
 
     # return (number of pixels, output)
     return len(pixels), output
